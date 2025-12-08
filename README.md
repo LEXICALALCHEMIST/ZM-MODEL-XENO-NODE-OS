@@ -1,4 +1,5 @@
 # ZM-MODEL-XENO
+<<<<<<< HEAD
 
 ZM-MODEL-XENO
 Ephemeral Logic Core for NODE | OS
@@ -245,3 +246,6 @@ License & Usage
 XENO is licensed for use exclusively within NODE | OS.
 
 External use, repackaging, or resale is not permitted without explicit authorization.
+=======
+Zeta Morph Model Xeno - Empheral Logic Core for NODE OS Single State Web Fabric
+>>>>>>> 30f32245efc078a73c7f9417f696346e8629fe9f
