@@ -1,15 +1,15 @@
-// ZMXENO/MorphLogic/PushModule.js
+// ZMXENO/MorphLogic/PullModule.js
 import { morphInit } from '../core/morphInit.js';
 import { Shutter } from './Shutter.js';
 import { SYMBOL_SEQUENCE } from '../core/sacred9.js';
 
-export default class PushModule {
+export default class PullModule {
   constructor(skeleton) {
     this.skeleton = skeleton;
   }
 
-  // ←←← THIS WAS MISSING: proper method declaration
-  async push(keyNumber, morphId) {
+  // ← THIS WAS MISSING: proper method declaration
+  async pull(keyNumber) {
     const currentSkeletonNumber = parseInt(
       this.skeleton.units
         .slice(0, this.skeleton.state.numberLength)
@@ -18,7 +18,7 @@ export default class PushModule {
       10
     );
 
-    const { skeleton, key } = await morphInit(keyNumber, currentSkeletonNumber, true);
+    const { skeleton, key } = await morphInit(keyNumber, currentSkeletonNumber, false);
     this.skeleton = skeleton;
     const units = this.skeleton.units;
 
@@ -30,20 +30,20 @@ export default class PushModule {
       if (valueStr !== 'null') {
         const value = parseInt(valueStr);
         if (value > 0) {
-          unit.push(value, this.skeleton.carryBus);
+          unit.pull(value, this.skeleton.carryBus);
 
-          while (this.skeleton.carryBus.carryValue > 0) {
+          while (this.skeleton.carryBus.carryValue < 0) {
             const { carryValue, carryTarget } = this.skeleton.carryBus.flushCarry();
             const targetIndex = parseInt(carryTarget.replace('Unit', '')) - 1;
             if (targetIndex >= 0 && targetIndex < units.length) {
-              units[targetIndex].push(carryValue, this.skeleton.carryBus);
+              units[targetIndex].pull(1, this.skeleton.carryBus);
             }
           }
         }
       }
     }
 
-    const newSkeletonNumber = currentSkeletonNumber + keyNumber;
+    const newSkeletonNumber = Math.max(currentSkeletonNumber - keyNumber, 0);
 
     units.forEach(unit => {
       if (unit.state) {

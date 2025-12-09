@@ -1,4 +1,4 @@
-// ZMXENO/MorphLogic/PullModule.js
+// ZMXENO/MorphLogic/PushModule.js
 import { morphInit } from '../core/morphInit.js';
 import { Shutter } from './Shutter.js';
 import { SYMBOL_SEQUENCE } from '../core/sacred9.js';
