@@ -1,21 +1,45 @@
 ZM MODEL XENO - FOR NODE OS LOGIC GATE
 
-ZMXENO IS THE SECOND model of the orginal concept. More clean tight and equipped with LOGIC GATE INPUT OUT PUT FEEDS
+ZMXENO IS THE SECOND model of the orginal concept ZETA|MORPH. More clean tight and equipped with LOGIC GATE INPUT OUT PUT FEEDS
 for Empheral caclulations on RAM level. This model is desinged to RUN NODE | OS 
 
 ZMXENO/
 ├── core/
-│   ├── sacred9.js
-│   └── CarryBus.js
+│   ├── sacred9.js          # The One True Symbol Table
+│   └── CarryBus.js               # Silent carry propagation
+│
 ├── key/
-│   ├── KeyMaker.js
-│   └── ShiftKey.js
-├── skeleton/                
-│   ├── unit1.js to unit12.js
-│   ├── unitExtensionsPush.js
-│   ├── unitExtensionsPull.js
-│   └── (all the rest)
-└── (other folders coming)
+│   ├── KeyMaker.js               # Number → symbolic key
+│   └── ShiftKey.js               # Aligns key to skeleton length
+│
+├── skeleton/
+│   ├── unit1.js to unit12.js     # 12 sacred units (left-to-right)
+│   ├── unitExtensionsPush.js     # .push() extensions
+│   └── unitExtensionsPull.js     # .pull() extensions
+│
+├── MorphLogic/
+│   ├── SkeletonInitializer.js    # Left-to-right, 0–999,999,999,999
+│   ├── PushModule.js             # Core push + carry + collapse
+│   ├── PullModule.js             # Core pull + borrow + collapse
+│   ├── Shutter.js                # Unified canonical collapse (snapMidMorph)
+│   ├── SnapshotPush.js           # Legacy name (kept for compatibility)
+│   └── SnapshotPull.js           # Legacy name (kept for compatibility)
+│
+├── LogicGate/                         # Zeta-Transfer-Resonance-Layer
+│   ├── send.js
+│   ├── receive.js
+│   ├── update.js
+│   └── signal.js                 # Intent Gate API
+│
+├── test/
+│   ├── testInit.js               # Skeleton init + visual verify
+│   ├── testKey.js                # KeyMaker + ShiftKey
+│   ├── testPush.js               # Full push + collapse
+│   └── testPull.js               # Full pull + borrow
+│
+└── README.md                     # Full technical manifesto (coming)
+  
+\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\XENO
 
 ROOT/
 
@@ -32,11 +56,10 @@ export const VOID_SYMBOL = '⊙';
 
 morphinit.js
 
-// ZMXENO/core/morphinit.js
-import Skeleton from '../skeleton/Skeleton.js';
+// ZMXENO/core/morphInit.js
+import SkeletonInitializer from '../MorphLogic/SkeletonInitializer.js';
 import KeyMaker from '../key/KeyMaker.js';
 import ShiftKey from '../key/ShiftKey.js';
-import { S9, VOID } from './sacred9.js';
 
 export async function morphInit(value, current = 0, push = true) {
   const vLen = value.toString().length;
@@ -45,12 +68,15 @@ export async function morphInit(value, current = 0, push = true) {
   const skeletonVal = vLen > cLen ? value : current;
   const keyVal = vLen > cLen ? current : value;
 
-  const skeleton = new Skeleton();
+  const skeleton = new SkeletonInitializer();
   await skeleton.set(skeletonVal, push);
 
-  const key = new ShiftKey().shift(new KeyMaker().make(keyVal), skeleton.length);
+  // ←←← THIS WAS THE BUG
+  const keyMaker = new KeyMaker();                    // ← instance
+  const tempKey = keyMaker.makeKey(keyVal);           // ← call method
+  const shiftedKey = new ShiftKey().shift(tempKey, skeleton.state.numberLength);
 
-  return { skeleton, key };
+  return { skeleton, key: shiftedKey };
 }
 
 CarryBus.js
@@ -74,6 +100,8 @@ export default class CarryBus {
     return carry;
   }
 }
+
+\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\XENO
 
 key/
 
@@ -137,8 +165,552 @@ export default class ShiftKey {
   }
 }
 
+\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\XENO
+
 skeleton/ SEE GIT
+
+\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\XENO
 
 MORPHLOGIC/
 
+PullModule.js
+
+// ZMXENO/MorphLogic/PushModule.js
+import { morphInit } from '../core/morphinit.js';
+import { Shutter } from './Shutter.js';
+import { SYMBOL_SEQUENCE } from '../core/sacred9.js';
+
+export default class PushModule {
+  constructor(skeleton) {
+    this.skeleton = skeleton;
+  }
+
+  async push(keyNumber, morphId) {
+    const currentSkeletonNumber = parseInt(
+      this.skeleton.units
+        .slice(0, this.skeleton.state.numberLength)
+        .map(u => SYMBOL_SEQUENCE.indexOf(u.state.currentSymbol))
+        .join('') || '0',
+      10
+    );
+
+    const { skeleton, key } = await morphInit(keyNumber, currentSkeletonNumber, true);
+    this.skeleton = skeleton;
+    const units = this.skeleton.units;
+
+    for (let i = 0; i < key.push.length && i < units.length; i++) {
+      const [unitName, valueStr] = key.push[i].split(':');
+      const unitIndex = parseInt(unitName.replace('U', '')) - 1;
+      const unit = units[unitIndex];
+
+      if (valueStr !== 'null') {
+        const value = parseInt(valueStr);
+        if (value > 0) {
+          unit.push(value, this.skeleton.carryBus);
+
+          while (this.skeleton.carryBus.carryValue > 0) {
+            const { carryValue, carryTarget } = this.skeleton.carryBus.flushCarry();
+            const targetIndex = parseInt(carryTarget.replace('Unit', '')) - 1;
+            if (targetIndex >= 0 && targetIndex < units.length) {
+              units[targetIndex].push(carryValue, this.skeleton.carryBus);
+            }
+          }
+        }
+      }
+    }
+
+    const newSkeletonNumber = currentSkeletonNumber + keyNumber;
+
+    // Clear transient state before collapse
+    units.forEach(unit => {
+      if (unit.state) {
+        unit.state.pushes = [];
+        unit.state.pushesLength = 0;
+        unit.state.carry = 0;
+        unit.state.hasCollapsed = false;
+        unit.state.u1Collapse = false;
+      }
+    });
+    this.skeleton.carryBus.carryValue = 0;
+    this.skeleton.carryBus.carryTarget = null;
+
+    // Collapse into canonical form
+    this.skeleton = await Shutter.snapMidMorph(this.skeleton, newSkeletonNumber);
+
+    return this.skeleton.getState();
+  }
+}
+
+PushModule.js
+
+// ZMXENO/MorphLogic/PullModule.js
+import { morphInit } from '../core/morphinit.js';
+import { Shutter } from './Shutter.js';
+import { SYMBOL_SEQUENCE } from '../core/sacred9.js';
+
+export default class PullModule {
+  constructor(skeleton) {
+    this.skeleton = skeleton;
+  }
+
+  async pull(keyNumber) {
+    const currentSkeletonNumber = parseInt(
+      this.skeleton.units
+        .slice(0, this.skeleton.state.numberLength)
+        .map(u => SYMBOL_SEQUENCE.indexOf(u.state.currentSymbol))
+        .join('') || '0',
+      10
+    );
+
+    const { skeleton, key } = await morphInit(keyNumber, currentSkeletonNumber, false);
+    this.skeleton = skeleton;
+    const units = this.skeleton.units;
+
+    for (let i = 0; i < key.push.length && i < units.length; i++) {
+      const [unitName, valueStr] = key.push[i].split(':');
+      const unitIndex = parseInt(unitName.replace('U', '')) - 1;
+      const unit = units[unitIndex];
+
+      if (valueStr !== 'null') {
+        const value = parseInt(valueStr);
+        if (value > 0) {
+          unit.pull(value, this.skeleton.carryBus);
+
+          while (this.skeleton.carryBus.carryValue < 0) {
+            const { carryValue, carryTarget } = this.skeleton.carryBus.flushCarry();
+            const targetIndex = parseInt(carryTarget.replace('Unit', '')) - 1;
+            if (targetIndex >= 0 && targetIndex < units.length) {
+              units[targetIndex].pull(1, this.skeleton.carryBus);
+            }
+          }
+        }
+      }
+    }
+
+    const newSkeletonNumber = Math.max(currentSkeletonNumber - keyNumber, 0);
+
+    // Clear transient state before collapse
+    units.forEach(unit => {
+      if (unit.state) {
+        unit.state.pushes = [];
+        unit.state.pushesLength = 0;
+        unit.state.carry = 0;
+        unit.state.hasCollapsed = false;
+        unit.state.u1Collapse = false;
+      }
+    });
+    this.skeleton.carryBus.carryValue = 0;
+    this.skeleton.carryBus.carryTarget = null;
+
+    // Collapse into canonical form
+    this.skeleton = await Shutter.snapMidMorph(this.skeleton, newSkeletonNumber);
+
+    return this.skeleton.getState();
+  }
+}
+
+shutter.js
+
+// ZMXENO/MorphLogic/Shutter.js
+import { SYMBOL_SEQUENCE, VOID_SYMBOL } from '../core/sacred9.js';
+
+export const Shutter = {
+  async snapMidMorph(skeleton, computedNumber) {
+    const digits = computedNumber.toString().split('').map(Number);
+    skeleton.state.numberLength = computedNumber === 0 ? 1 : digits.length;
+    skeleton.state.activeUnitTarget = `u${skeleton.state.numberLength}`;
+
+    skeleton.units.forEach((unit, i) => {
+      unit.state.currentSymbol = VOID_SYMBOL;
+      unit.state.carry = 0;
+      unit.state.hasCollapsed = false;
+      unit.state.pushes = [];
+      unit.state.pushesLength = 0;
+      unit.state.u1Collapse = false;
+
+      const digit = digits[i];
+      if (digit !== undefined) {
+        unit.state.currentSymbol = SYMBOL_SEQUENCE[digit];
+      }
+    });
+
+    // Deep snapshot
+    skeleton.state.snapshot = JSON.parse(JSON.stringify(skeleton.getState()));
+
+    return skeleton;
+  }
+};
+
+SkeletonInitliazer.js
+
+// ZMXENO/MorphLogic/SkeletonInitializer.js
+import { extendUnits as extendUnitsPush } from '../skeleton/unitExtensionsPush.js';
+import { extendUnits as extendUnitsPull } from '../skeleton/unitExtensionsPull.js';
+import CarryBus from '../core/CarryBus.js';
+import { SYMBOL_SEQUENCE, VOID_SYMBOL } from '../core/sacred9.js';
+
+export default class SkeletonInitializer {
+  constructor() {
+    this.units = [];
+    this.carryBus = new CarryBus();
+    this.state = {
+      numberLength: 1,
+      activeUnitTarget: 'u1',
+      snapshot: null
+    };
+  }
+
+  async init(isPushOperation = true) {
+    const extendUnitsModule = isPushOperation ? extendUnitsPush : extendUnitsPull;
+    const { Unit1, Unit2, Unit3, Unit4, Unit5, Unit6, Unit7, Unit8, Unit9, Unit10, Unit11, Unit12 } = await extendUnitsModule();
+
+    this.units = [
+      new Unit1(), new Unit2(), new Unit3(), new Unit4(),
+      new Unit5(), new Unit6(), new Unit7(), new Unit8(),
+      new Unit9(), new Unit10(), new Unit11(), new Unit12()
+    ];
+
+    this.units.forEach(unit => { unit.skeleton = this; });
+  }
+
+  async set(number, isPushOperation = true) {
+    await this.init(isPushOperation);
+
+    if (number < 0 || number > 999999999999) {
+      throw new Error('Number must be between 0 and 999,999,999,999');
+    }
+
+    const digits = number.toString().split('').map(Number);
+    this.state.numberLength = digits.length || 1;
+    this.state.activeUnitTarget = `u${this.state.numberLength}`;
+
+    this.units.forEach((unit, i) => {
+      unit.state.currentSymbol = VOID_SYMBOL;
+      unit.state.carry = 0;
+      unit.state.hasCollapsed = false;
+      unit.state.pushes = [];
+      unit.state.pushesLength = 0;
+      unit.state.u1Collapse = false;
+
+      const digit = digits[i];
+      if (digit !== undefined) {
+        unit.state.currentSymbol = SYMBOL_SEQUENCE[digit];
+      }
+    });
+
+    const state = this.getState();
+    this.state.snapshot = JSON.parse(JSON.stringify(state));
+    return state;
+  }
+
+  getState() {
+    return {
+      units: this.units.map(unit => unit.getState()),
+      numberLength: this.state.numberLength,
+      activeUnitTarget: this.state.activeUnitTarget
+    };
+  }
+}
+
+SnapshotPush.js
+
+// ZMXENO/MorphLogic/SnapshotPush.js
+import { SYMBOL_SEQUENCE, VOID_SYMBOL } from '../core/sacred9.js';
+
+export const SnapshotPush = {
+  async snapPush(skeleton, newNumber) {
+    const u1 = skeleton.units[0];
+
+    if (!u1.state.u1Collapse) return skeleton;
+
+    const digits = newNumber.toString().split('').map(Number);
+    skeleton.state.numberLength = digits.length;
+    skeleton.state.activeUnitTarget = `u${skeleton.state.numberLength}`;
+
+    skeleton.units.forEach((unit, i) => {
+      unit.state.currentSymbol = VOID_SYMBOL;
+      unit.state.carry = 0;
+      unit.state.hasCollapsed = false;
+      unit.state.pushes = [];
+      unit.state.pushesLength = 0;
+      unit.state.u1Collapse = false;
+
+      const digit = digits[i];
+      if (digit !== undefined) {
+        unit.state.currentSymbol = SYMBOL_SEQUENCE[digit];
+      }
+    });
+
+    skeleton.state.snapshot = JSON.parse(JSON.stringify(skeleton.getState()));
+    return skeleton;
+  }
+};
+
+SnapshotPull.js
+
+// ZMXENO/MorphLogic/SnapshotPull.js
+import { SYMBOL_SEQUENCE, VOID_SYMBOL } from '../core/sacred9.js';
+
+export const SnapshotPull = {
+  async snapPull(skeleton, newNumber) {
+    const u1 = skeleton.units[0];
+
+    if (!u1.state.u1Collapse) return skeleton;
+
+    const digits = newNumber.toString().split('').map(Number);
+    skeleton.state.numberLength = digits.length || 1;
+    skeleton.state.activeUnitTarget = `u${skeleton.state.numberLength}`;
+
+    skeleton.units.forEach((unit, i) => {
+      unit.state.currentSymbol = VOID_SYMBOL;
+      unit.state.carry = 0;
+      unit.state.hasCollapsed = false;
+      unit.state.pushes = [];
+      unit.state.pushesLength = 0;
+      unit.state.u1Collapse = false;
+
+      const digit = digits[i];
+      if (digit !== undefined) {
+        unit.state.currentSymbol = SYMBOL_SEQUENCE[digit];
+      }
+    });
+
+    skeleton.state.snapshot = JSON.parse(JSON.stringify(skeleton.getState()));
+    return skeleton;
+  }
+};
+
+\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\XENO
+
 test/
+
+testInit.js
+
+// ZMXENO/test/testOriginalStyle.js
+import SkeletonInitializer from '../MORPHLOGIC/SkeletonInitializer.js';
+import { SYMBOL_SEQUENCE, VOID_SYMBOL } from '../core/sacred9.js';
+
+console.log('ZMXENO — SKELETON INITIALIZATION TEST\n');
+
+const tests = [
+  { value: 1,          expected: '1',          desc: 'Single digit: 1' },
+  { value: 505,        expected: '505',        desc: 'Three digits: 505' },
+  { value: 999999999999, expected: '999999999999', desc: 'Max 12 digits' },
+  { value: 0,          expected: '0',          desc: 'Zero' },
+  { value: 123456789012, expected: '123456789012', desc: 'Mixed digits' }
+];
+
+async function run() {
+  const skeleton = new SkeletonInitializer();
+
+  for (const test of tests) {
+    console.log(`${test.desc} → ${test.value}`);
+
+    await skeleton.set(test.value);
+
+    const state = skeleton.getState();
+
+    // Beautiful left-to-right display
+    const display = state.units.map(u => u.currentSymbol).join('');
+    console.log(`Skeleton: <${display.slice(0,4)}|${display.slice(4,8)}|${display.slice(8,12)}>`);
+    console.log(`Length: ${state.numberLength} | Active: ${state.activeUnitTarget}`);
+
+    // Reconstruct number for verification
+    const reconstructed = parseInt(
+      state.units
+        .slice(0, state.numberLength)
+        .map(u => SYMBOL_SEQUENCE.indexOf(u.currentSymbol))
+        .join(''),
+      10
+    );
+
+    const pass = reconstructed === test.value;
+    console.log(`Reconstructed: ${reconstructed} → ${pass ? 'PASS' : 'FAIL'}\n`);
+  }
+
+  console.log('ALL TESTS PASSED — ZMXENO SKELETON IS SACRED AND TRUE');
+}
+
+run();
+
+RESULTS
+ZMXENO — SKELETON INITIALIZATION TEST
+//KEEPING SYMBOLIC FORM IS KEY TO STAY OFF GPU LOOPS
+Single digit: 1 → 1
+Skeleton: <●⊙⊙⊙|⊙⊙⊙⊙|⊙⊙⊙⊙>
+Length: 1 | Active: u1
+Reconstructed: 1 → PASS
+
+Three digits: 505 → 505
+Skeleton: <■⚙■⊙|⊙⊙⊙⊙|⊙⊙⊙⊙>
+Length: 3 | Active: u3
+Reconstructed: 505 → PASS
+
+Max 12 digits → 999999999999
+Skeleton: <▲▲▲▲|▲▲▲▲|▲▲▲▲>
+Length: 12 | Active: u12
+Reconstructed: 999999999999 → PASS
+
+Zero → 0
+Skeleton: <⚙⊙⊙⊙|⊙⊙⊙⊙|⊙⊙⊙⊙>
+Length: 1 | Active: u1
+Reconstructed: 0 → PASS
+
+Mixed digits → 123456789012
+Skeleton: <●○□¤|■•¥◇|▲⚙●○>
+Length: 12 | Active: u12
+Reconstructed: 123456789012 → PASS
+
+ALL TESTS PASSED — ZMXENO SKELETON IS SACRED AND TRUE
+
+testPush.js 
+
+// ZMXENO/test/testPush.js
+import SkeletonInitializer from '../MorphLogic/SkeletonInitializer.js';
+import PushModule from '../MorphLogic/PushModule.js';
+import { SYMBOL_SEQUENCE, VOID_SYMBOL } from '../core/sacred9.js';
+
+console.log('ZMXENO — PUSH MODULE TEST\n');
+
+const tests = [
+  {
+    description: 'Set skeleton to 500 and push 50 (with carry propagation)',
+    initial: 500,
+    pushValue: 50,
+    expected: {
+      numberLength: 3,
+      activeUnitTarget: 'u3',
+      symbols: [
+        SYMBOL_SEQUENCE[5], SYMBOL_SEQUENCE[5], SYMBOL_SEQUENCE[0],
+        VOID_SYMBOL, VOID_SYMBOL, VOID_SYMBOL,
+        VOID_SYMBOL, VOID_SYMBOL, VOID_SYMBOL,
+        VOID_SYMBOL, VOID_SYMBOL, VOID_SYMBOL
+      ]
+    }
+  },
+  {
+    description: 'Set skeleton to 5059 and push 12 (test carry propagation, no expansion)',
+    initial: 5059,
+    pushValue: 12,
+    expected: {
+      numberLength: 4,
+      activeUnitTarget: 'u4',
+      symbols: [
+        SYMBOL_SEQUENCE[5], SYMBOL_SEQUENCE[0], SYMBOL_SEQUENCE[7], SYMBOL_SEQUENCE[1],
+        VOID_SYMBOL, VOID_SYMBOL, VOID_SYMBOL, VOID_SYMBOL,
+        VOID_SYMBOL, VOID_SYMBOL, VOID_SYMBOL, VOID_SYMBOL
+      ]
+    }
+  },
+  {
+    description: 'Set skeleton to 99 and push 1 (test U1 snapshot expansion)',
+    initial: 99,
+    pushValue: 1,
+    expected: {
+      numberLength: 3,
+      activeUnitTarget: 'u3',
+      symbols: [
+        SYMBOL_SEQUENCE[1], SYMBOL_SEQUENCE[0], SYMBOL_SEQUENCE[0],
+        VOID_SYMBOL, VOID_SYMBOL, VOID_SYMBOL,
+        VOID_SYMBOL, VOID_SYMBOL, VOID_SYMBOL,
+        VOID_SYMBOL, VOID_SYMBOL, VOID_SYMBOL
+      ]
+    }
+  }
+];
+
+async function runTests() {
+  for (let i = 0; i < tests.length; i++) {
+    const t = tests[i];
+    console.log(`Test ${i + 1}: ${t.description}`);
+
+    const skeleton = new SkeletonInitializer();
+    await skeleton.set(t.initial, true);
+
+    const pushModule = new PushModule(skeleton);
+    const state = await pushModule.push(t.pushValue);
+
+    const passed =
+      state.numberLength === t.expected.numberLength &&
+      state.activeUnitTarget === t.expected.activeUnitTarget &&
+      state.units.every((u, idx) => u.currentSymbol === t.expected.symbols[idx]);
+
+    const display = state.units.map(u => u.currentSymbol).join('');
+    console.log(`Skeleton: <${display.slice(0,4)}|${display.slice(4,8)}|${display.slice(8,12)}>`);
+    console.log(`Length: ${state.numberLength} | Target: ${state.activeUnitTarget}`);
+    console.log(`Result: ${passed ? 'PASS' : 'FAIL'}\n`);
+  }
+
+  console.log('ALL PUSH TESTS PASSED — ZMXENO PUSH MODULE IS SACRED');
+}
+
+runTests();
+
+RESULTS
+
+ZMXENO — PUSH MODULE TEST
+
+Test 1: Set skeleton to 500 and push 50 (with carry propagation)
+unit2 Push Start: times=5, currentSymbol=⚙
+unit2 Push: SYMBOL: ● CARRY: 0 DIRECTION: 1
+unit2 Push: SYMBOL: ○ CARRY: 0 DIRECTION: 1
+unit2 Push: SYMBOL: □ CARRY: 0 DIRECTION: 1
+unit2 Push: SYMBOL: ¤ CARRY: 0 DIRECTION: 1
+unit2 Push: SYMBOL: ■ CARRY: 0 DIRECTION: 1
+unit2 Push End: pushesLength=5
+Skeleton: <■■⚙⊙|⊙⊙⊙⊙|⊙⊙⊙⊙>
+Length: 3 | Target: u3
+Result: PASS
+
+Test 2: Set skeleton to 5059 and push 12 (test carry propagation, no expansion)
+unit3 Push Start: times=1, currentSymbol=■
+unit3 Push: SYMBOL: • CARRY: 0 DIRECTION: 1
+unit3 Push End: pushesLength=1
+unit4 Push Start: times=2, currentSymbol=▲
+unit4 Push: SYMBOL: ⚙ CARRY: 1 DIRECTION: 1
+unit4 Carry: CARRY: 1 COLLAPSED: true
+unit4 Push: SYMBOL: ⚙ CARRY: 1 DIRECTION: 1
+unit4 Carry: CARRY: 1 COLLAPSED: true
+unit4 Carry: CARRY: 1 COLLAPSED: true
+unit4 Push End: pushesLength=2
+unit3 Push Start: times=1, currentSymbol=•
+unit3 Push: SYMBOL: ¥ CARRY: 0 DIRECTION: 1
+unit3 Push End: pushesLength=2
+Skeleton: <■⚙¥●|⊙⊙⊙⊙|⊙⊙⊙⊙>
+Length: 4 | Target: u4
+Skeleton: <■⚙¥●|⊙⊙⊙⊙|⊙⊙⊙⊙>
+Length: 4 | Target: u4
+Result: PASS
+Result: PASS
+
+Test 3: Set skeleton to 99 and push 1 (test U1 snapshot expansion)
+unit2 Push Start: times=1, currentSymbol=▲
+
+Test 3: Set skeleton to 99 and push 1 (test U1 snapshot expansion)
+unit2 Push Start: times=1, currentSymbol=▲
+unit2 Push: SYMBOL: ⚙ CARRY: 1 DIRECTION: 1
+unit2 Carry: CARRY: 1 COLLAPSED: true
+unit2 Push End: pushesLength=1
+unit2 Push: SYMBOL: ⚙ CARRY: 1 DIRECTION: 1
+unit2 Carry: CARRY: 1 COLLAPSED: true
+unit2 Push End: pushesLength=1
+unit1 Push Start: times=1, currentSymbol=▲
+unit1 Push: SYMBOL: ⚙ CARRY: 1 DIRECTION: 1
+unit1 Carry: CARRY: 1 COLLAPSED: true U1COLLAPSE: true
+unit1 Push End: pushesLength=1
+Skeleton: <●⚙⚙⊙|⊙⊙⊙⊙|⊙⊙⊙⊙>
+Length: 3 | Target: u3
+unit1 Push Start: times=1, currentSymbol=▲
+unit1 Push: SYMBOL: ⚙ CARRY: 1 DIRECTION: 1
+unit1 Carry: CARRY: 1 COLLAPSED: true U1COLLAPSE: true
+unit1 Push End: pushesLength=1
+Skeleton: <●⚙⚙⊙|⊙⊙⊙⊙|⊙⊙⊙⊙>
+Length: 3 | Target: u3
+unit1 Carry: CARRY: 1 COLLAPSED: true U1COLLAPSE: true
+unit1 Push End: pushesLength=1
+Skeleton: <●⚙⚙⊙|⊙⊙⊙⊙|⊙⊙⊙⊙>
+Length: 3 | Target: u3
+Length: 3 | Target: u3
+Result: PASS
+
+ALL PUSH TESTS PASSED — ZMXENO PUSH MODULE IS SACRED

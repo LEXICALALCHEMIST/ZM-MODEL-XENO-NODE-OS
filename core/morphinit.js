@@ -1,8 +1,7 @@
-// ZMXENO/core/morphinit.js
-import Skeleton from '../skeleton/Skeleton.js';
+// ZMXENO/core/morphInit.js
+import SkeletonInitializer from '../MorphLogic/SkeletonInitializer.js';
 import KeyMaker from '../key/KeyMaker.js';
 import ShiftKey from '../key/ShiftKey.js';
-import { S9, VOID } from './sacred9.js';
 
 export async function morphInit(value, current = 0, push = true) {
   const vLen = value.toString().length;
@@ -11,10 +10,13 @@ export async function morphInit(value, current = 0, push = true) {
   const skeletonVal = vLen > cLen ? value : current;
   const keyVal = vLen > cLen ? current : value;
 
-  const skeleton = new Skeleton();
+  const skeleton = new SkeletonInitializer();
   await skeleton.set(skeletonVal, push);
 
-  const key = new ShiftKey().shift(new KeyMaker().make(keyVal), skeleton.length);
+  // ←←← THIS WAS THE BUG
+  const keyMaker = new KeyMaker();                    // ← instance
+  const tempKey = keyMaker.makeKey(keyVal);           // ← call method
+  const shiftedKey = new ShiftKey().shift(tempKey, skeleton.state.numberLength);
 
-  return { skeleton, key };
+  return { skeleton, key: shiftedKey };
 }
