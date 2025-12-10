@@ -1,6 +1,6 @@
 // ZMXENO/MorphLogic/PushModule.js
 import { morphInit } from '../core/morphInit.js';
-import { Shutter } from './Shutter.js';
+import { Shutter } from './shutter.js';
 import { SYMBOL_SEQUENCE } from '../core/sacred9.js';
 
 export default class PushModule {
@@ -62,3 +62,4 @@ export default class PushModule {
     return this.skeleton.getState();
   }
 }
+

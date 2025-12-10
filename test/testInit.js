@@ -1,5 +1,5 @@
 // ZMXENO/test/testOriginalStyle.js
-import SkeletonInitializer from '../MORPHLOGIC/SkeletonInitializer.js';
+import SkeletonInitializer from '../MorphLogic/SkeletonInitializer.js';
 import { SYMBOL_SEQUENCE, VOID_SYMBOL } from '../core/sacred9.js';
 
 console.log('ZMXENO — SKELETON INITIALIZATION TEST\n');
