@@ -1,10 +1,7 @@
-// ZMXENO/gate/phaser/phaser.js
-// The Observer. The Witness. The Sacred Log.
-
-import { SYMBOL_SEQUENCE } from '../../core/sacred9.js';
-// ZMXENO/gate/phaser/phaser.js — FINAL, NO DUPLICATION
-import { skeletonToNumber, skeletonToString } from '../../utils/translator.js';
-
+// ZMXENO/gate/phaser/phaser.js — THE SACRED OBSERVER
+import './imprintPhase.js';  // ← pulls in the phase (no export needed)
+import { skeletonToString } from '../../utils/translator.js';
+import { SYMBOL_SEQUENCE, VOID_SYMBOL } from '../../core/sacred9.js';
 class Phase {
   constructor() {
     this.history = [];
@@ -15,16 +12,18 @@ class Phase {
     this.current = {
       phase: name,
       timestamp: Date.now(),
-      data
+      data,
+      snapshot: null
     };
-    console.log(`\n[PHASE] ${name.toUpperCase()} — START`);
+    console.log(`\n[PHASE:${name.toUpperCase()}] START`);
     return this;
   }
 
   snap(skeleton) {
+    if (!skeleton) return this;
     const state = skeleton.getState();
     const display = skeletonToString(state);
-    const value = skeletonToNumber(state);
+    const value = this.reconstruct(state);
 
     this.current.snapshot = { display, value, length: state.numberLength };
 
@@ -33,10 +32,19 @@ class Phase {
     return this;
   }
 
+  reconstruct(state) {
+    let value = 0;
+    for (let i = 0; i < state.numberLength; i++) {
+      const idx = SYMBOL_SEQUENCE.indexOf(state.units[i].currentSymbol);
+      value = value * 10 + (idx === -1 ? 0 : idx);
+    }
+    return value;
+  }
+
   end() {
     if (this.current) {
       this.history.push({ ...this.current });
-      console.log(`[PHASE] ${this.current.phase.toUpperCase()} — END\n`);
+      console.log(`[PHASE:${this.current.phase.toUpperCase()}] END\n`);
       this.current = null;
     }
     return this.history;
@@ -44,7 +52,6 @@ class Phase {
 
   reset() {
     this.history = [];
-    console.log('[PHASER] Reset — Ready for next test\n');
   }
 
   log() {

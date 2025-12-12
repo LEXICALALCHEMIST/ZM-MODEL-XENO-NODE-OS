@@ -1,31 +1,22 @@
-// ZMXENO/gate/imprint.js
-// The sacred imprint — the only thing that moves intent
+// ZMXENO/gate/imprint/imprint.js
+// Pure, zero-dependency imprint factory
+
+const simpleUuid = () => crypto.randomUUID();
 
 export const Imprint = (config) => ({
-  // Required
-  app: config.app,                    // "calculator", "notepad", etc.
-  intent: config.intent,              // "add", "sub", "push", "pull", "write", etc.
-
-  // Payload (flexible)
-  a: config.a ?? null,                // first operand / skeletonA
-  b: config.b ?? null,                // second operand / skeletonB
-
-  // Optional metadata
-  morphId: config.morphId ?? Date.now(),
-  timestamp: config.timestamp ?? Date.now(),
-
-  // Future-proof extension
-  ...config.extra
+  id: config.id || simpleUuid(),
+  app: config.app || "unknown",
+  intent: config.intent,
+  timestamp: Date.now(),
+  a: config.a ?? null,
+  b: config.b ?? null,
+  meta: config.meta || {}
 });
 
-// Example usage (kept here for reference)
-/*
-Imprint({
+// ——— CALCULATOR IMPRINT ———
+export const CalcAdd13 = Imprint({
   app: "calculator",
   intent: "add",
   a: 1,
-  b: 2
+  b: 3
 });
-*/
-
-// also matrix .js where the tranformation happens
