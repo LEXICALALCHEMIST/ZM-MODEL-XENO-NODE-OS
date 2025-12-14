@@ -54,6 +54,7 @@ export default class PushModule {
         unit.state.u1Collapse = false;
       }
     });
+    
     this.skeleton.carryBus.carryValue = 0;
     this.skeleton.carryBus.carryTarget = null;
 
