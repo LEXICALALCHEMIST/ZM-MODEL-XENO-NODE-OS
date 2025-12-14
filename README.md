@@ -34,31 +34,14 @@ No runtime garbage storms.
 
 XENO only activates on explicit intent input.
 
-What XENO Is Not
-
-❌ Not an AI model
-
-❌ Not a neural network
-
-❌ Not a physics bypass
-
-❌ Not a blockchain
-
-❌ Not a general compute replacement for CPUs
-
 It is a logic execution strategy optimized for ultra-low overhead UI-level computation.
-
 Core Principle
 
 Traditional systems compute like this:
-
 Input → CPU cycles → Math ops → Memory → Render → Idle loops
 
-
 XENO computes like this:
-
 Intent → Symbol → State Morph → Result → Render → Silence
-
 
 No idle work.
 No background churn.
@@ -80,6 +63,7 @@ Emits result back to:
 
 App
 UI
+
 NODE | OS wiring layer
 All execution occurs inside a single unified state fabric.
 Why XENO Is Bound to NODE | OS
